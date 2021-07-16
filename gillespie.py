@@ -39,6 +39,55 @@ class AddCytotox_cont(Model):
         self.add_reaction([attach, detach, damage, repair, death, deathattached])
         self.timespan(np.linspace(0, 50, 101))
 
+class AddCytoChemo_simplified(Model):
+    def __init__(self, parameter_values=None):
+        # Initialize the model.
+        Model.__init__(self, name="Additive cytotoxicity")
+
+        # Define parameters.
+        deathratevalues = [0., 0.1, .5]
+        imax = len(deathratevalues)
+        deathrates = [Parameter(name='delta{}'.format(i), expression=d) for i, d in enumerate(deathratevalues)]
+        repairrate = Parameter(name='repairrate', expression=6)
+        ctldamagerate = Parameter(name='damagerate', expression=.1)
+        proliferationrate = Parameter(name='proliferationrate', expression=1. / 24)
+        ctlchemokillrate = Parameter(name='ctlchemokillrate', expression=0.1)
+        chemodamagerate = Parameter(name='chemodamagerate', expression=.5)
+        ctlrecruitmentrate = Parameter(name='CTLrecruitmentrate', expression=.1)
+        ctlremovalrate = Parameter(name='CTLremovalrate', expression=.01)
+
+        self.add_parameter([repairrate, ctldamagerate, ctlchemokillrate, chemodamagerate,
+                            proliferationrate, ctlremovalrate, ctlrecruitmentrate] + deathrates)
+
+        # Define molecular species.
+        tumorcells = [Species(name='0 hit TC', initial_value=1000)] + [
+            Species(name='{} hit TC'.format(i + 1), initial_value=0) for i in range(imax - 1)]
+        ctl = Species(name='CTL', initial_value=100)
+        chemo = Species(name='Chemo', initial_value=1)
+        self.add_species(tumorcells + [ctl] + [chemo])
+
+        # Define reactions.
+        ctldamage = [Reaction(name="Damage{}".format(i), reactants={TI1: 1, ctl: 1}, products={TI2: 1, ctl:1},
+                              rate=ctldamagerate)
+                  for i, (TI1, TI2) in enumerate(zip(tumorcells[:-1], tumorcells[1:]))]
+        chemodamage = [Reaction(name="ChemoDamage{}".format(i), reactants={TI1: 1, chemo: 1}, products={TI2: 1, chemo:1},
+                                rate=chemodamagerate)
+                  for i, (TI1, TI2) in enumerate(zip(tumorcells[:-1], tumorcells[1:]))]
+        repairfree = [Reaction(name="Repairfree{}".format(i), reactants={T1: 1}, products={T2: 1},
+                               rate=repairrate) for i, (T1, T2) in
+                      enumerate(zip(tumorcells[1:], tumorcells[:-1]))]
+        death = [Reaction(name="Death{}".format(i), reactants={T: 1}, products={}, rate=deathrates[i])
+                 for i, T in enumerate(tumorcells)]
+        ctldeath = Reaction(name='CTLDeath', reactants={ctl: 1, chemo: 1}, products={chemo:1}, rate=ctlchemokillrate)
+        ctlrecruitment = Reaction(name='CTLrecruitment', reactants={}, products={ctl: 1}, rate=ctlrecruitmentrate)
+        ctlremoval = Reaction(name='CTLremoval', reactants={ctl:1}, products={}, rate=ctlremovalrate)
+        proliferation = [
+            Reaction(name='Proliferation', reactants={tumorcells[0]: 1}, products={tumorcells[0]: 2},
+                     rate=proliferationrate)]
+
+        self.add_reaction(
+            chemodamage + ctldamage + repairfree + death + proliferation + [ctldeath, ctlrecruitment, ctlremoval])
+        self.timespan(np.linspace(0, 100, 101))
 
 class AddCytotox(Model):
     def __init__(self, parameter_values=None):
@@ -46,7 +95,7 @@ class AddCytotox(Model):
         Model.__init__(self, name="Additive cytotoxicity")
 
         # Define parameters.
-        deathratevalues = [0., 0., .5]
+        deathratevalues = [0., 0.1, .5]
         imax = len(deathratevalues)
         deathrates = [Parameter(name='delta{}'.format(i), expression=d) for i, d in enumerate(deathratevalues)]
         kappa1 = Parameter(name='kappa1', expression=1)
@@ -54,6 +103,9 @@ class AddCytotox(Model):
         repairrate = Parameter(name='repairrate', expression=6)
         damagerate = Parameter(name='damagerate', expression=6)
         proliferationrate = Parameter(name='proliferationrate', expression=1. / 24)
+        ctlchemokillrate = Parameter(name='ctlchemokillrate', expression=0.1)
+        chemodamagerate = Parameter(name='chemodamagerate', expression=.02)
+
 
         self.add_parameter([kappa0, kappa1, repairrate, damagerate, proliferationrate] + deathrates)
 
@@ -62,7 +114,8 @@ class AddCytotox(Model):
             Species(name='Free {} hit TC'.format(i + 1), initial_value=0) for i in range(imax - 1)]
         attachedctl = [Species(name='{} hit attached TC'.format(i), initial_value=0) for i in range(imax)]
         ctl = Species(name='Free CTL', initial_value=100)
-        self.add_species(freetumorcells + attachedctl + [ctl])
+        chemo = Species(name='Chemo', initial_value=100)
+        self.add_species(freetumorcells + attachedctl + [ctl] + [chemo])
 
         # Define reactions.
         attach = [
@@ -99,7 +152,8 @@ class AddCytotox(Model):
 
 
 if __name__ == '__main__':
-    model = AddCytotox()
+    model = AddCytoChemo_simplified()
     results = model.run()
+    # print(results)
     results.plot()  # included_species_list=['Immune_cell_attached', 'D'])
     plt.show()
