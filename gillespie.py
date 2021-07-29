@@ -1,5 +1,6 @@
 import numpy as np
 from gillespy2 import Model, Species, Parameter, Reaction
+from gillespy2.solvers.numpy.ode_solver import ODESolver
 from matplotlib import pyplot as plt
 
 
@@ -49,11 +50,11 @@ class AddCytoChemo_simplified(Model):
         imax = len(deathratevalues)
         deathrates = [Parameter(name='delta{}'.format(i), expression=d) for i, d in enumerate(deathratevalues)]
         repairrate = Parameter(name='repairrate', expression=6)
-        ctldamagerate = Parameter(name='damagerate', expression=.1)
+        ctldamagerate = Parameter(name='damagerate', expression=.01)
         proliferationrate = Parameter(name='proliferationrate', expression=1. / 24)
-        ctlchemokillrate = Parameter(name='ctlchemokillrate', expression=0.1)
-        chemodamagerate = Parameter(name='chemodamagerate', expression=.5)
-        ctlrecruitmentrate = Parameter(name='CTLrecruitmentrate', expression=.1)
+        ctlchemokillrate = Parameter(name='ctlchemokillrate', expression=1)
+        chemodamagerate = Parameter(name='chemodamagerate', expression=1)
+        ctlrecruitmentrate = Parameter(name='CTLrecruitmentrate', expression=1)
         ctlremovalrate = Parameter(name='CTLremovalrate', expression=.01)
 
         self.add_parameter([repairrate, ctldamagerate, ctlchemokillrate, chemodamagerate,
@@ -156,4 +157,5 @@ if __name__ == '__main__':
     results = model.run()
     # print(results)
     results.plot()  # included_species_list=['Immune_cell_attached', 'D'])
+    plt.yscale('log')
     plt.show()
