@@ -50,7 +50,7 @@ class AddCytoChemo_simplified(Model):
         imax = len(deathratevalues)
         deathrates = [Parameter(name='delta{}'.format(i), expression=d) for i, d in enumerate(deathratevalues)]
         repairrate = Parameter(name='repairrate', expression=6)
-        ctldamagerate = Parameter(name='damagerate', expression=.01)
+        ctldamagerate = Parameter(name='ctldamagerate', expression=.01)
         proliferationrate = Parameter(name='proliferationrate', expression=1. / 24)
         ctlchemokillrate = Parameter(name='ctlchemokillrate', expression=1)
         chemodamagerate = Parameter(name='chemodamagerate', expression=1)
@@ -61,22 +61,21 @@ class AddCytoChemo_simplified(Model):
                             proliferationrate, ctlremovalrate, ctlrecruitmentrate] + deathrates)
 
         # Define molecular species.
-        tumorcells = [Species(name='0 hit TC', initial_value=1000)] + [
-            Species(name='{} hit TC'.format(i + 1), initial_value=0) for i in range(imax - 1)]
+        tumorcells = [Species(name='hitTC0', initial_value=1000)] + [
+            Species(name='hitTC{}'.format(i + 1), initial_value=0) for i in range(imax - 1)]
         ctl = Species(name='CTL', initial_value=100)
         chemo = Species(name='Chemo', initial_value=1)
         self.add_species(tumorcells + [ctl] + [chemo])
 
         # Define reactions.
-        ctldamage = [Reaction(name="Damage{}".format(i), reactants={TI1: 1, ctl: 1}, products={TI2: 1, ctl:1},
+        ctldamage = [Reaction(name="CTLDamage{}".format(i), reactants={TI1: 1, ctl: 1}, products={TI2: 1, ctl:1},
                               rate=ctldamagerate)
                   for i, (TI1, TI2) in enumerate(zip(tumorcells[:-1], tumorcells[1:]))]
         chemodamage = [Reaction(name="ChemoDamage{}".format(i), reactants={TI1: 1, chemo: 1}, products={TI2: 1, chemo:1},
                                 rate=chemodamagerate)
                   for i, (TI1, TI2) in enumerate(zip(tumorcells[:-1], tumorcells[1:]))]
         repairfree = [Reaction(name="Repairfree{}".format(i), reactants={T1: 1}, products={T2: 1},
-                               rate=repairrate) for i, (T1, T2) in
-                      enumerate(zip(tumorcells[1:], tumorcells[:-1]))]
+                               rate=repairrate) for i, (T1, T2) in enumerate(zip(tumorcells[1:], tumorcells[:-1]))]
         death = [Reaction(name="Death{}".format(i), reactants={T: 1}, products={}, rate=deathrates[i])
                  for i, T in enumerate(tumorcells)]
         ctldeath = Reaction(name='CTLDeath', reactants={ctl: 1, chemo: 1}, products={chemo:1}, rate=ctlchemokillrate)
@@ -111,10 +110,10 @@ class AddCytotox(Model):
         self.add_parameter([kappa0, kappa1, repairrate, damagerate, proliferationrate] + deathrates)
 
         # Define molecular species.
-        freetumorcells = [Species(name='Free 0 hit TC', initial_value=800)] + [
-            Species(name='Free {} hit TC'.format(i + 1), initial_value=0) for i in range(imax - 1)]
-        attachedctl = [Species(name='{} hit attached TC'.format(i), initial_value=0) for i in range(imax)]
-        ctl = Species(name='Free CTL', initial_value=100)
+        freetumorcells = [Species(name='Free0hitTC', initial_value=800)] + [
+            Species(name='Free{}hitTC'.format(i + 1), initial_value=0) for i in range(imax - 1)]
+        attachedctl = [Species(name='attachedTC{}hit'.format(i), initial_value=0) for i in range(imax)]
+        ctl = Species(name='FreeCTL', initial_value=100)
         chemo = Species(name='Chemo', initial_value=100)
         self.add_species(freetumorcells + attachedctl + [ctl] + [chemo])
 
@@ -153,7 +152,8 @@ class AddCytotox(Model):
 
 
 if __name__ == '__main__':
-    model = AddCytoChemo_simplified()
+    # model = AddCytoChemo_simplified()
+    model = AddCytotox()
     results = model.run()
     # print(results)
     results.plot()  # included_species_list=['Immune_cell_attached', 'D'])
