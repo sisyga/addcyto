@@ -1,3 +1,4 @@
+import gillespy2
 import numpy as np
 from gillespy2 import Model, Species, Parameter, Reaction
 from gillespy2.solvers.numpy.ode_solver import ODESolver
@@ -152,10 +153,65 @@ class AddCytotox(Model):
         self.timespan(np.linspace(0, 24, 101))
 
 
+class CellDamages(Model):
+    def __init__(self, parameter_values=None):
+        # Initialize the model.
+        Model.__init__(self, name="Cellular damages")
+
+        # Define parameters.
+        focirepairrate = Parameter(name='focirepairrate', expression=.5)
+        hitrate = Parameter(name='hitrate', expression=.5)
+        membranerepairrate = Parameter(name='membranerepairrate', expression=100)
+        focidamagerate = Parameter(name='focidamagerate', expression=6)
+
+        self.add_parameter([focirepairrate, hitrate, membranerepairrate, focidamagerate])
+
+        # Define molecular species.
+        ca2 = Species(name='Ca2', initial_value=0, mode='discrete')
+        foci = Species(name='foci', initial_value=0, mode='discrete')
+        self.add_species([ca2, foci])
+
+        # Define reactions.
+        # membrane rupture
+        rupture = Reaction(name='membrane_rupture', reactants={}, products={ca2: 50}, rate=hitrate)
+        membranerepair = Reaction(name='membrane_repair', reactants={ca2: 1}, products={}, rate=membranerepairrate)
+        focidamage = Reaction(name='foci_damage', reactants={ca2: 1}, products={ca2: 1, foci: 1}, rate=focidamagerate)
+        focirepair = Reaction(name='foci_repair', reactants={foci: 1}, products={}, rate=focirepairrate)
+        # propensity_function="alpha2/(1+pow(U,gamma))")
+
+        self.add_reaction([rupture, membranerepair, focidamage, focirepair])
+        self.timespan(np.linspace(0, 50, 1001))
+
+
 if __name__ == '__main__':
-    model = AddCytoChemo_simplified()
-    results = model.run()
+    fig_width_pt = 455.24411 / 3  # Get this from LaTeX using \showthe\columnwidth
+    inches_per_pt = 1.0 / 72.27  # Convert pt to inches
+    golden_mean = (np.sqrt(5) - 1.0) / 2.0  # Aesthetic ratio
+    fig_width = fig_width_pt * inches_per_pt  # width in inches
+    fig_height = fig_width * golden_mean  # height in inches
+    fig_size = [fig_width, fig_height]
+    params = {'axes.labelsize': 8,
+              'font.sans-serif': 'Arial',
+              'font.size': 8,
+              'legend.fontsize': 10,
+              'xtick.labelsize': 8,
+              'ytick.labelsize': 8,
+              'text.usetex': False,
+              'figure.figsize': fig_size}
+    plt.rcParams.update(params)
+    model = CellDamages()
+    results = model.run(algorithm='SSA')
     # print(results)
-    results.plot()  # included_species_list=['Immune_cell_attached', 'D'])
-    plt.yscale('log')
+    # results.plot(figsize=fig_size)  # included_species_list=['Immune_cell_attached', 'D'])
+    # plt.yscale('log')
+    plt.figure(figsize=(1.5, 1.25))
+    plt.plot(results.data[0]['time'], results.data[0]['Ca2'], label=r'$c_{{\rm Ca}^{2+}}$', lw=1)
+    plt.plot(results.data[0]['time'], results.data[0]['foci'], label=r'$n_{\rm foci}$', lw=1)
+    plt.legend(borderpad=0.1, fontsize=8, frameon=True, handlelength=1, edgecolor='1.')
+    plt.xlabel('Time (h)')
+    plt.ylabel('')
+    plt.ylim(-1, 20)
+    plt.xlim(0, 50)
+    plt.xticks([0, 24, 48])
+    plt.tight_layout()
     plt.show()
