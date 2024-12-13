@@ -1,5 +1,3 @@
-# README
-
 ## Project Overview
 
 This repository contains models and simulations for studying the effects of cytotoxic T lymphocytes (CTLs) and chemotherapy on tumor cells for the ERC-funded project "sublethal". The project includes both deterministic and stochastic models implemented in Python.
